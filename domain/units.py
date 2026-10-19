@@ -56,7 +56,7 @@ MU_0: float = 1.25663706212e-6  # [H/m] (Henrios por metro)
 SPEED_OF_LIGHT: float = 299_792_458.0  # [m/s]
 
 # ═══════════════════════════════════════════════════════════════════
-# CARGA ELEMENTAL  e
+# CARGA ELEMENTAL Y MASAS DE PARTÍCULAS
 # ═══════════════════════════════════════════════════════════════════
 #
 # La carga más pequeña que existe libre en la naturaleza.
@@ -64,6 +64,8 @@ SPEED_OF_LIGHT: float = 299_792_458.0  # [m/s]
 #   Electrón: q = -e = -1.602 × 10⁻¹⁹ C
 #
 ELEMENTARY_CHARGE: float = 1.602176634e-19  # [C] (Coulombs)
+ELECTRON_MASS: float = 9.1093837015e-31      # [kg]
+PROTON_MASS: float = 1.67262192369e-27       # [kg]
 
 # ═══════════════════════════════════════════════════════════════════
 # VERIFICACIÓN DE CONSISTENCIA

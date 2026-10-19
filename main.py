@@ -42,6 +42,7 @@ def read_root():
             "constants": "/api/physics/constants",
             "coulomb_rest": "/api/physics/coulomb",
             "field_grid_rest": "/api/physics/electric-field/grid",
+            "trajectory_rest": "/api/physics/trajectory",
             "realtime_ws": "/ws/physics",
         },
     }
