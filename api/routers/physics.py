@@ -17,6 +17,12 @@ from domain.electric_field import (
     electric_field_superposition,
     FieldPoint,
 )
+from domain.dynamics import (
+    DynamicParticle,
+    UniformElectricField,
+    TrajectorySnapshot,
+    simulate_trajectory,
+)
 from domain import units
 
 from api.schemas.physics import (
@@ -24,6 +30,10 @@ from api.schemas.physics import (
     CoulombForceSchema,
     FieldPointSchema,
     FieldGridQuery,
+    DynamicParticleSchema,
+    UniformFieldSchema,
+    TrajectorySnapshotSchema,
+    TrajectoryQuery,
     PhysicsResponse,
 )
 
@@ -157,3 +167,77 @@ def calculate_electric_field_grid(
         field=schema_points,
         computeTimeMs=compute_time_ms,
     )
+
+
+def schema_to_dynamic_particle(schema: DynamicParticleSchema) -> DynamicParticle:
+    """Convierte DynamicParticleSchema a la entidad de dominio DynamicParticle."""
+    part = schema_to_particle(schema.particle)
+    v = schema.velocity
+    if hasattr(v, "z") and v.z is not None:
+        vel = Vector3D(x=v.x, y=v.y, z=v.z)
+    else:
+        vel = Vector2D(x=v.x, y=v.y)
+    return DynamicParticle(particle=part, mass=schema.mass, velocity=vel)
+
+
+def schema_to_uniform_field(schema: UniformFieldSchema) -> UniformElectricField:
+    """Convierte UniformFieldSchema a entidad de dominio UniformElectricField."""
+    fv = schema.fieldVector
+    if hasattr(fv, "z") and fv.z is not None:
+        vec = Vector3D(x=fv.x, y=fv.y, z=fv.z)
+    else:
+        vec = Vector2D(x=fv.x, y=fv.y)
+    return UniformElectricField(
+        field_vector=vec,
+        x_bounds=schema.xBounds or (-float("inf"), float("inf")),
+        y_bounds=schema.yBounds or (-float("inf"), float("inf")),
+        z_bounds=schema.zBounds or (-float("inf"), float("inf")),
+    )
+
+
+def snapshot_to_schema(snap: TrajectorySnapshot) -> TrajectorySnapshotSchema:
+    """Convierte TrajectorySnapshot a TrajectorySnapshotSchema."""
+    return TrajectorySnapshotSchema(
+        time=snap.time,
+        position=snap.position.to_dict(),
+        velocity=snap.velocity.to_dict(),
+        acceleration=snap.acceleration.to_dict(),
+        speed=snap.speed,
+        kineticEnergy=snap.kinetic_energy,
+        potentialEnergy=snap.potential_energy,
+        totalEnergy=snap.total_energy,
+    )
+
+
+@router.post("/trajectory", response_model=PhysicsResponse)
+def calculate_trajectory(
+    query: TrajectoryQuery,
+    sources: list[ParticleSchema] | None = None,
+):
+    """Calcula la trayectoria dinámica completa de una carga bajo campos y fuerzas de Coulomb."""
+    t0 = time.perf_counter()
+    dyn_particle = schema_to_dynamic_particle(query.dynamicParticle)
+    domain_sources = [schema_to_particle(s) for s in sources] if sources else []
+    domain_uniform = (
+        [schema_to_uniform_field(u) for u in query.uniformFields]
+        if query.uniformFields
+        else []
+    )
+
+    snapshots = simulate_trajectory(
+        dynamic_particle=dyn_particle,
+        sources=domain_sources,
+        uniform_fields=domain_uniform,
+        total_time=query.totalTime,
+        dt=query.dt,
+    )
+
+    schema_snapshots = [snapshot_to_schema(s) for s in snapshots]
+    compute_time_ms = (time.perf_counter() - t0) * 1000.0
+
+    return PhysicsResponse(
+        type="trajectory_result",
+        trajectory=schema_snapshots,
+        computeTimeMs=compute_time_ms,
+    )
+

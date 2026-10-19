@@ -238,7 +238,7 @@ export interface PhysicsState {
 
 ---
 
-## 📖 Narrativa — Los 4 Capítulos
+## 📖 Narrativa — Ruta de 9 Capítulos (De la Carga a la Onda Electromagnética)
 
 ### Capítulo 1: Partículas y Cargas (2D)
 
@@ -412,6 +412,239 @@ SuperpositionExplanation.tsx — panel educativo sobre superposición
 
 ---
 
+### Capítulo 5: Partículas en Movimiento y Corriente Eléctrica (Dinámica)
+
+> *"Una carga estática es solo el principio. Si aplicamos un campo o dejamos que las fuerzas de Coulomb actúen libremente, las partículas adquieren aceleración, velocidad y trayectoria."*
+
+**¿Qué enseña?**
+- Segunda Ley de Newton para cargas: $\vec{F}_{\text{neta}} = q \vec{E} = m \vec{a} \implies \vec{a} = \frac{q}{m} \vec{E}$
+- Movimiento balístico en un campo uniforme (análogo al tiro parabólico gravitatorio, pero con deflexión proporcional a la relación carga/masa $q/m$)
+- Integración numérica en tiempo real (Velocity-Verlet: conservación de energía y estabilidad orbital)
+- Cargas en conductores: velocidad de deriva ($v_d$), densidad de portadores, corriente eléctrica $I = \frac{\Delta q}{\Delta t}$
+
+**¿Qué muestra la UI?**
+- Partículas lanzadas con vector de velocidad inicial $\vec{v}_0$ interactivo (flecha verde arrastrable)
+- Trazas de trayectoria con gradiente de color según la velocidad instantánea $|\vec{v}|$
+- Placas paralelas deflectoras (experimento tipo tubo de rayos catódicos / Thomson)
+- Deslizador de masa de partícula ($m$) y carga ($q$) para explorar la relación $q/m$
+- Gráficas en tiempo real: $x(t), y(t), v(t)$, Energía Cinética vs. Energía Potencial
+
+**Backend involucrado:**
+```python
+# domain/dynamics.py
+def step_verlet(particle: Particle, mass: float, velocity: Vector2D, force: Vector2D, dt: float) -> tuple[Vector2D, Vector2D]:
+    """Integración Velocity-Verlet para preservar la energía simpléctica."""
+    acceleration = force * (1.0 / mass)
+    new_pos = particle.position + velocity * dt + acceleration * (0.5 * dt * dt)
+    new_vel = velocity + acceleration * dt
+    return new_pos, new_vel
+```
+
+**Componentes clave:**
+```
+TrajectoryCanvas.tsx      — canvas con dibujo de estelas y partículas en movimiento
+VelocityHandle.tsx        — flecha interactiva para fijar v0
+KinematicsInspector.tsx   — panel con energía cinética, aceleración y velocidad
+DeflectionPlates2D.tsx    — placas cargadas que generan campo uniforme E
+```
+
+---
+
+### Capítulo 6: Campo Magnético y Fuerza de Lorentz (2D / 3D)
+
+> *"El magnetismo no es una fuerza separada: es la manifestación relativista de cargas eléctricas en movimiento. Cuando una carga corre, despierta a $\vec{B}$."*
+
+**¿Qué enseña?**
+- Cargas en movimiento generan campo magnético: $\vec{B} = \frac{\mu_0}{4\pi} \frac{q \vec{v} \times \hat{r}}{r^2}$
+- Fuerza de Lorentz completa: $\vec{F} = q(\vec{E} + \vec{v} \times \vec{B})$
+- Propiedad geométrica fundamental: $\vec{F}_B \perp \vec{v}$ y $\vec{F}_B \perp \vec{B}$ (la fuerza magnética nunca realiza trabajo; solo desvía la trayectoria)
+- Movimiento en campo magnético uniforme: Movimiento circular, radio de ciclotrón $R = \frac{mv}{|q|B}$, frecuencia ciclotrónica $\omega_c = \frac{|q|B}{m}$
+- Trayectoria helicoidal cuando $\vec{v}$ posee componente paralela a $\vec{B}$ en 3D
+
+**¿Qué muestra la UI?**
+- Selector 2D/3D con campo magnético uniforme entrando/saliendo del plano ($\otimes, \odot$)
+- Guía interactiva de la **Regla de la Mano Derecha** (vectores $\vec{v}, \vec{B}, \vec{F}_B$ coloreados con arcos angulares)
+- Simulación de Ciclotrón y Selector de Velocidades de Wien ($\vec{E} \perp \vec{B}$)
+- Alambre rectilíneo con corriente continua $I$ mostrando líneas concéntricas de $\vec{B}$
+- Selector de ángulo de lanzamiento en 3D para apreciar hélices y espirales
+
+**Backend involucrado:**
+```python
+# domain/lorentz.py
+def lorentz_force(particle: Particle, velocity: Vector3D, E: Vector3D, B: Vector3D) -> Vector3D:
+    """F = q * (E + v × B)"""
+    v_cross_b = velocity.cross(B)
+    return (E + v_cross_b) * particle.charge
+```
+
+**Componentes clave:**
+```
+LorentzVisualizer3D.tsx    — escena 3D con trayectoria helicoidal y vectores E, v, B, F
+RightHandRuleGuide.tsx     — visualizador interactivo pedagógico de la mano derecha
+CyclotronControls.tsx      — controles de frecuencia de oscilación y campo B
+MagneticFieldLines2D.tsx   — círculos concéntricos de Biot-Savart
+```
+
+---
+
+### Capítulo 7: Inducción Electromagnética y Acoplamiento Dinámico ($\vec{E} \leftrightarrow \vec{B}$)
+
+> *"Faraday descubrió que un imán en movimiento genera electricidad. Maxwell completó el círculo: un campo eléctrico que cambia engendra magnetismo. Ambos campos se retroalimentan."*
+
+**¿Qué enseña?**
+- Flujo magnético a través de una superficie: $\Phi_B = \iint \vec{B} \cdot d\vec{A}$
+- Ley de Faraday-Lenz: $\mathcal{E} = -\frac{d\Phi_B}{dt} \iff \nabla \times \vec{E} = -\frac{\partial \vec{B}}{\partial t}$
+- Corriente de desplazamiento de Maxwell: $\nabla \times \vec{B} = \mu_0 \vec{J} + \mu_0 \varepsilon_0 \frac{\partial \vec{E}}{\partial t}$
+- El nacimiento del campo eléctrico no-conservativo (rotacional): líneas de $\vec{E}$ cerradas sobre sí mismas
+- Autoinducción y transformadores: la antesala indispensable de la radiación libre
+
+**¿Qué muestra la UI?**
+- Espira conductora con imán interactivo que el usuario puede desplazar con el ratón
+- Galvanómetro virtual que oscila en tiempo real según la velocidad relativa $d\Phi_B/dt$
+- Campo vectorial rotacional inducido $\vec{E}_{\text{ind}}$ formando remolinos concéntricos alrededor del flujo variable
+- Gráficas sincronizadas de $\Phi_B(t)$ y $\mathcal{E}(t)$ desfasadas $90^\circ$ según la Ley de Lenz
+
+**Backend involucrado:**
+```python
+# domain/induction.py
+def induced_emf_from_flux(flux_t0: float, flux_t1: float, dt: float) -> float:
+    """Ley de Faraday-Lenz: fem = -dPhi/dt"""
+    return -(flux_t1 - flux_t0) / dt
+```
+
+**Componentes clave:**
+```
+FaradayLoopSimulation.tsx  — espira con flujo y corriente inducida animada
+GalvanometerGauge.tsx      — aguja indicadora de corriente inducida
+VortexFieldRenderer.tsx    — campo vectorial rotacional E(x, y)
+FluxWaveformChart.tsx      — oscilograma de flujo vs fem inducida
+```
+
+---
+
+### Capítulo 8: Mecánica de Ondas y Propagación
+
+> *"Antes de ensamblar los campos en el espacio vacío, desentrañamos el comportamiento universal de las ondas: amplitud, frecuencia, longitud de onda y velocidad."*
+
+**¿Qué enseña?**
+- La Ecuación Diferencial de Onda unidimensional y tridimensional:
+  $$\frac{\partial^2 \psi}{\partial x^2} = \frac{1}{v^2}\frac{\partial^2 \psi}{\partial t^2}$$
+- Parámetros canónicos: Amplitud $A$, longitud de onda $\lambda$, frecuencia $f$, periodo $T = 1/f$, número de onda $k = \frac{2\pi}{\lambda}$, frecuencia angular $\omega = 2\pi f$
+- Relación de dispersión fundamental: $v = \lambda f = \frac{\omega}{k}$
+- Superposición e interferencia: batimiento, ondas estacionarias, nodos y vientres
+- Frentes de onda (planos vs esféricos) y Principio de Huygens
+
+**¿Qué muestra la UI?**
+- Onda senoidal continua animada con sliders en vivo para $A, \lambda, f, \phi$
+- Modos de inspección dual:
+  - *Corte espacial:* congelar el tiempo ($t = t_0$) para medir $\lambda$ con regla virtual
+  - *Corte temporal:* fijar una sonda en $x = x_0$ para ver el oscilador armónico simple $y(t)$
+- Simulador de doble rendija / dos fuentes ondulantes con patrón de interferencia 2D
+- Modulador para combinar dos ondas y visualizar batimientos u ondas estacionarias
+
+**Backend involucrado:**
+```python
+# domain/wave_mechanics.py
+@dataclass(frozen=True)
+class HarmonicWave1D:
+    amplitude: float
+    wavelength: float
+    frequency: float
+    phase: float = 0.0
+
+    @property
+    def wave_number(self) -> float:
+        return 2.0 * math.pi / self.wavelength
+
+    @property
+    def angular_frequency(self) -> float:
+        return 2.0 * math.pi * self.frequency
+
+    @property
+    def phase_velocity(self) -> float:
+        return self.wavelength * self.frequency
+
+    def evaluate(self, x: float, t: float) -> float:
+        return self.amplitude * math.cos(self.wave_number * x - self.angular_frequency * t + self.phase)
+```
+
+**Componentes clave:**
+```
+Wave1DVisualizer.tsx       — canvas de cuerda vibrante con controles de parámetros
+WaveParameterSliders.tsx   — controles sincronizados de lambda, f, v, A
+Interference2DRenderer.tsx — mapa de ondas circulares interfiriendo
+WaveStationaryToggle.tsx   — interruptor entre onda viajera y onda estacionaria
+```
+
+---
+
+### Capítulo 9: La Onda Electromagnética en 3D (El Clímax del Proyecto)
+
+> *"La apoteosis del electromagnetismo: Maxwell demostró que la perturbación electromagnética no necesita medio material para viajar. La luz es una onda electromagnética pura que viaja por el vacío a $c = 1/\sqrt{\varepsilon_0 \mu_0}$."*
+
+**¿Qué enseña?**
+- Deducción formal desde las Ecuaciones de Maxwell en el vacío:
+  $$\nabla \times (\nabla \times \vec{E}) = -\frac{\partial}{\partial t}(\nabla \times \vec{B}) \implies \nabla^2 \vec{E} = \mu_0 \varepsilon_0 \frac{\partial^2 \vec{E}}{\partial t^2}$$
+- La velocidad de la luz como propiedad intrínseca del vacío:
+  $$c = \frac{1}{\sqrt{\varepsilon_0 \mu_0}} \approx 299,792,458 \text{ m/s}$$
+  *(Verificada numéricamente en `domain/units.py`)*.
+- Solución de onda plana armónica y ortogonalidad transversal estricta:
+  $$\vec{E}(x, t) = E_0 \cos(kx - \omega t)\,\hat{j}$$
+  $$\vec{B}(x, t) = B_0 \cos(kx - \omega t)\,\hat{k}$$
+  $$\text{con } E_0 = c B_0, \quad \vec{E} \perp \vec{B} \perp \hat{k}$$
+- Flujo de energía y Momento: Vector de Poynting $\vec{S} = \frac{1}{\mu_0}(\vec{E} \times \vec{B})$ [$\text{W/m}^2$]
+- Polarización electromagnética: Lineal (horizontal/vertical), Circular y Elíptica
+- Fuente física: Radiación del Dipolo Oscilante de Hertz (carga acelerada radiando en 3D)
+
+**¿Qué muestra la UI?**
+- **Escena 3D cinematográfica en Three.js / React Three Fiber:**
+  - Eje de propagación longitudinal ($x$) con vectores $\vec{E}$ verticales (naranja/rojo brillante)
+  - Vectores $\vec{B}$ perpendiculares horizontales (cyan/azul brillante)
+  - Vector de Poynting $\vec{S}$ continuo marcando la dirección y magnitud del flujo energético
+  - Superficie envolvente translúcida que ilustra la modulación senoidal en el espacio
+- Control de cámara orbital 3D suave (rotación libre 360°, zoom, paneo)
+- Barra interactiva del **Espectro Electromagnético** (Radio $\rightarrow$ Microondas $\rightarrow$ Infrarrojo $\rightarrow$ Visible $\rightarrow$ Ultravioleta $\rightarrow$ Rayos X $\rightarrow$ Rayos Gamma)
+- Selector de polarización: conmutar a polarización circular y observar cómo la punta de $\vec{E}$ traza una hélice perfecta en el espacio tridimensional
+- Modo Radiación de Dipolo de Hertz: visualización de una carga puntual vibrando en el origen y expulsando ondas esféricas transversales
+
+**Backend involucrado:**
+```python
+# domain/em_wave.py
+@dataclass(frozen=True)
+class PlanarEMWave:
+    wavelength: float
+    E0: float  # [V/m]
+    direction: Vector3D = Vector3D(1.0, 0.0, 0.0)
+
+    @property
+    def frequency(self) -> float:
+        return SPEED_OF_LIGHT / self.wavelength
+
+    @property
+    def B0(self) -> float:
+        return self.E0 / SPEED_OF_LIGHT
+
+    def evaluate_at(self, x: float, t: float) -> tuple[Vector3D, Vector3D, Vector3D]:
+        k = 2.0 * math.pi / self.wavelength
+        omega = 2.0 * math.pi * self.frequency
+        phase = k * x - omega * t
+        E_vec = Vector3D(0.0, self.E0 * math.cos(phase), 0.0)
+        B_vec = Vector3D(0.0, 0.0, self.B0 * math.cos(phase))
+        S_vec = E_vec.cross(B_vec) * (1.0 / MU_0)
+        return E_vec, B_vec, S_vec
+```
+
+**Componentes clave:**
+```
+EMWave3DScene.tsx          — escena 3D principal de onda plana con Three.js
+DipoleRadiation3D.tsx      — simulación de dipolo emisor de Hertz en 3D
+PoyntingVectorArrow.tsx    — renderizador del vector S
+PolarizationController.tsx — selector lineal / circular / elíptica
+SpectrumBar.tsx            — barra del espectro electromagnético interactivo
+```
+
+---
+
 ## 🗂️ Estructura Completa de Archivos
 
 ### Backend
@@ -419,7 +652,7 @@ SuperpositionExplanation.tsx — panel educativo sobre superposición
 ```
 backend/
 ├── main.py                           # FastAPI app + CORS + routers
-├── requirements.txt                  # fastapi, uvicorn, numpy, pydantic
+├── requirements.txt                  # fastapi, uvicorn, numpy, pydantic, websockets
 │
 ├── domain/                           # 🧠 FÍSICA PURA (sin HTTP, sin API)
 │   ├── __init__.py
@@ -427,7 +660,13 @@ backend/
 │   ├── units.py                      # Constantes SI, conversiones
 │   ├── particles.py                  # Particle (posición + carga)
 │   ├── coulomb.py                    # coulomb_force(p1, p2) → Vector
-│   └── electric_field.py            # electric_field_at(point, charges) → Vector
+│   ├── electric_field.py             # electric_field_at(point, charges) → Vector
+│   ├── dynamics.py                   # Cinemática, aceleración y Verlet (Cap. 5)
+│   ├── magnetic_field.py             # Biot-Savart, B de cargas y alambres (Cap. 6)
+│   ├── lorentz.py                    # Fuerza de Lorentz F = q(E + v×B) (Cap. 6)
+│   ├── induction.py                  # Ley de Faraday y fem inducida (Cap. 7)
+│   ├── wave_mechanics.py             # Ecuación de onda, armónicos, interferencia (Cap. 8)
+│   └── em_wave.py                    # Ondas EM transversales, Poynting y radiación (Cap. 9)
 │
 ├── api/
 │   ├── __init__.py
@@ -441,7 +680,10 @@ backend/
 └── tests/
     ├── test_vectors.py               # Operaciones vectoriales correctas
     ├── test_coulomb.py               # F = k·q₁·q₂/r² con valores conocidos
-    └── test_electric_field.py        # E = k·q/r², superposición
+    ├── test_electric_field.py        # E = k·q/r², superposición
+    ├── test_dynamics.py              # Integración temporal Verlet
+    ├── test_lorentz.py               # Regla de la mano derecha y ciclotrón
+    └── test_em_wave.py               # Transversalidad E x B = c y Poynting
 ```
 
 ### Frontend
@@ -455,10 +697,15 @@ frontend/src/
 ├── pages/
 │   ├── HomePage.tsx                  # Landing: intro al proyecto
 │   ├── chapters/
-│   │   ├── Chapter1_Charges.tsx      # Partículas y cargas 2D
-│   │   ├── Chapter2_Coulomb.tsx      # Ley de Coulomb 2D
-│   │   ├── Chapter3_Forces3D.tsx     # Coulomb en 3D
-│   │   └── Chapter4_ElectricField.tsx # Campo eléctrico
+│   │   ├── Chapter1_Charges.tsx          # Partículas y cargas 2D
+│   │   ├── Chapter2_Coulomb.tsx          # Ley de Coulomb 2D
+│   │   ├── Chapter3_Forces3D.tsx         # Coulomb en 3D
+│   │   ├── Chapter4_ElectricField.tsx     # Campo eléctrico
+│   │   ├── Chapter5_Kinematics.tsx       # Dinámica y corriente de cargas
+│   │   ├── Chapter6_MagneticField.tsx    # Campo magnético y Lorentz
+│   │   ├── Chapter7_Induction.tsx        # Inducción y Faraday-Lenz
+│   │   ├── Chapter8_Waves.tsx            # Mecánica ondulatoria
+│   │   └── Chapter9_ElectromagneticWave.tsx # Onda electromagnética 3D (Clímax)
 │   └── ChapterLayout.tsx            # Layout compartido con sidebar + nav
 │
 ├── components/
@@ -642,6 +889,114 @@ Usuario arrastra q₁ a nueva posición
 | 4.7 | `FieldIntensityChart.tsx` — |E| vs r | Frontend |
 | 4.8 | `Chapter4_ElectricField.tsx` — página completa | Frontend |
 | 4.9 | Versión 3D del campo (FieldArrows3D) | Frontend |
+
+### Sprint 5: Capítulo 5 — Cinemática y Dinámica de Cargas (3-4 días)
+
+| # | Tarea | Archivos |
+|---|-------|----------|
+| 5.1 | `domain/dynamics.py` (integrador Verlet, masa de partículas, a = qE/m) + tests | Backend |
+| 5.2 | WS endpoint para streaming de trayectoria continua | Backend |
+| 5.3 | `TrajectoryCanvas.tsx` — estelas de trayectoria con colormap de velocidad | Frontend |
+| 5.4 | `VelocityHandle.tsx` — control interactivo de vector v0 | Frontend |
+| 5.5 | `KinematicsInspector.tsx` — panel de energía cinética y potencial | Frontend |
+| 5.6 | `DeflectionPlates2D.tsx` — experimento de placas paralelas | Frontend |
+| 5.7 | `Chapter5_Kinematics.tsx` — página completa | Frontend |
+
+### Sprint 6: Capítulo 6 — Campo Magnético y Fuerza de Lorentz (4-5 días)
+
+| # | Tarea | Archivos |
+|---|-------|----------|
+| 6.1 | `domain/magnetic_field.py` (Biot-Savart para cargas y alambres) + tests | Backend |
+| 6.2 | `domain/lorentz.py` (F = q(E + v × B)) + tests | Backend |
+| 6.3 | Soporte 2D y 3D en WS para campo magnético y fuerza Lorentz | Backend |
+| 6.4 | `LorentzVisualizer3D.tsx` — trayectoria helicoidal y ciclotrón en Three.js | Frontend |
+| 6.5 | `RightHandRuleGuide.tsx` — componente interactivo de la regla de la mano derecha | Frontend |
+| 6.6 | `CyclotronControls.tsx` — parámetros de campo B y radio de ciclotrón | Frontend |
+| 6.7 | `Chapter6_MagneticField.tsx` — página completa | Frontend |
+
+### Sprint 7: Capítulo 7 — Inducción y Faraday-Lenz (3-4 días)
+
+| # | Tarea | Archivos |
+|---|-------|----------|
+| 7.1 | `domain/induction.py` (flujo magnético, fem inducida -dPhi/dt) + tests | Backend |
+| 7.2 | `domain/maxwell.py` (corriente de desplazamiento) | Backend |
+| 7.3 | `FaradayLoopSimulation.tsx` — espira con imán interactivo | Frontend |
+| 7.4 | `GalvanometerGauge.tsx` — medidor analógico de corriente inducida | Frontend |
+| 7.5 | `VortexFieldRenderer.tsx` — líneas de campo E rotacional cerrado | Frontend |
+| 7.6 | `FluxWaveformChart.tsx` — oscilograma Phi_B vs fem | Frontend |
+| 7.7 | `Chapter7_Induction.tsx` — página completa | Frontend |
+
+### Sprint 8: Capítulo 8 — Mecánica Ondulatoria (3-4 días)
+
+| # | Tarea | Archivos |
+|---|-------|----------|
+| 8.1 | `domain/wave_mechanics.py` (armónicos, dispersión, interferencia) + tests | Backend |
+| 8.2 | `Wave1DVisualizer.tsx` — onda viajera y estacionaria en canvas | Frontend |
+| 8.3 | `WaveParameterSliders.tsx` — sliders de lambda, f, v, A, phi | Frontend |
+| 8.4 | `Interference2DRenderer.tsx` — mapa de interferencia de dos fuentes | Frontend |
+| 8.5 | `Chapter8_Waves.tsx` — página completa | Frontend |
+
+### Sprint 9: Capítulo 9 — Onda Electromagnética 3D y Radiación (5-6 días)
+
+| # | Tarea | Archivos |
+|---|-------|----------|
+| 9.1 | `domain/em_wave.py` (solución plana E perpendicular a B, c = 1/sqrt(eps0*mu0)) + tests | Backend |
+| 9.2 | `domain/poynting.py` (vector de Poynting S = (E × B)/mu0) + tests | Backend |
+| 9.3 | `domain/dipole_radiation.py` (radiación de dipolo oscilante de Hertz en 3D) + tests | Backend |
+| 9.4 | `EMWave3DScene.tsx` — simulación cinematográfica Three.js de onda plana transversal | Frontend |
+| 9.5 | `DipoleRadiation3D.tsx` — visualización 3D del dipolo radiante | Frontend |
+| 9.6 | `SpectrumBar.tsx` — barra interactiva del espectro electromagnético | Frontend |
+| 9.7 | `PolarizationController.tsx` — selector de polarización lineal y circular | Frontend |
+| 9.8 | `Chapter9_ElectromagneticWave.tsx` — página completa (Clímax de la aplicación) | Frontend |
+
+---
+
+## 🛠️ Diagnóstico y Solución de Errores Detectados (Sprints 1 a 4)
+
+### 1. Etiquetas de partículas congeladas en "3µC" y "-2µC"
+- **Causa Raíz:** En el estado inicial de partículas del frontend, `label` fue fijado con la cadena `"q₁ (+3 µC)"` o similar. Cuando el usuario mueve el slider de carga (`ChargeSlider`), se actualiza `particle.charge`, pero la cadena estática `particle.label` no se recalcula, y la UI renderiza el `label` directamente en lugar del valor de carga vivo.
+- **Solución:**
+  1. Mantener `particle.label` únicamente como identificador simbólico (`"q₁"`, `"q₂"`).
+  2. Implementar una función de formateo dinámico en `utils/units.ts`:
+     ```typescript
+     export function formatParticleBadge(label: string, chargeCoulombs: number): string {
+       const uC = (chargeCoulombs * 1e6).toFixed(1);
+       const sign = chargeCoulombs > 0 ? "+" : "";
+       return `${label || 'q'}: ${sign}${uC} µC`;
+     }
+     ```
+  3. En `ParticleRenderer.tsx` y `ParticleInspector.tsx`, invocar siempre `formatParticleBadge(p.label, p.charge)`.
+
+### 2. Límite restrictivo de 14 cm en inputs manuales de posición
+- **Causa Raíz:** En `ParticleControls.tsx` o `ParticleInspector.tsx`, los inputs `<input type="number" min="-14" max="14" />` o la función `clamp` fijaron un límite estático de $\pm 14\text{ cm}$ pensado para una cuadrícula inicial pequeña ($\pm 0.14\text{ m}$), pero el canvas responsive o ampliado posee mucho más espacio visible.
+- **Solución:**
+  1. Derivar los límites directamente de la escala del canvas y su resolución actual:
+     ```typescript
+     export function getPositionBounds(canvasWidth: number, scalePxPerM: number) {
+       const maxMeters = (canvasWidth / 2) / scalePxPerM;
+       return { maxCm: Math.floor(maxMeters * 100), minCm: -Math.floor(maxMeters * 100) };
+     }
+     ```
+  2. Aumentar el límite manual en los inputs a $\pm 50\text{ cm}$ o enlazarlo dinámicamente con `bounds.maxCm`.
+
+### 3. Solapamiento de textos en Capítulo 2 (Ley de Coulomb)
+- **Causa Raíz:** A distancias cortas ($r < 4\text{ cm}$), las magnitudes de fuerza crecen exponencialmente ($\propto 1/r^2$) y los textos de magnitud de fuerza, etiqueta de partícula y distancia $r$ convergen en las mismas coordenadas espaciales.
+- **Solución:**
+  1. Desplazamiento normal: dibujar la etiqueta de magnitud de fuerza desplazada perpendicularmente al vector $\vec{F}$ en una píldora con fondo oscuro semi-transparente (`#0f172a`, `rx=4`).
+  2. Ocultación condicional de distancia: si la distancia en píxeles es inferior a $35\text{ px}$, ocultar la etiqueta numérica de $r$ para priorizar la legibilidad de la fuerza y la carga.
+
+### 4. Bloqueo de cámara en Three.js (Capítulo 4)
+- **Causa Raíz:** Capa superpuesta en el DOM (Overlay). Los contenedores HTML/SVG de controles o mapas de calor 2D situados sobre el `<Canvas>` de Three.js con `position: absolute; inset: 0;` capturan los eventos de puntero (`pointer-events`), impidiendo que `OrbitControls` reciba los eventos de arrastre y rueda del ratón.
+- **Solución:**
+  1. Agregar `pointer-events: none;` al contenedor padre overlay y reactivar `pointer-events: auto;` exclusivamente en botones y sliders.
+  2. Garantizar que en Three.js se configure:
+     ```tsx
+     <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
+     ```
+
+### 5. Deserialización de vectores 3D en Pydantic (Backend)
+- **Causa Raíz:** `Vector2DSchema | Vector3DSchema` causaba que Pydantic validara primero contra 2D y descartara el eje `z`.
+- **Solución Aplicada:** Se configuró `model_config = ConfigDict(extra="forbid")` en `Vector2DSchema` y se ordenó la unión a `Vector3DSchema | Vector2DSchema` en `api/schemas/physics.py`.
 
 ---
 
