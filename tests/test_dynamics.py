@@ -114,3 +114,18 @@ def test_current_and_drift_velocity():
     area = 1e-4  # 1 cm² = 1e-4 m²
     I = compute_current(J, area)
     assert math.isclose(I, expected_J * area, rel_tol=1e-6)
+
+
+def test_verify_thomson_experiment_script():
+    from domain.dynamics import verify_thomson_experiment
+    res = verify_thomson_experiment(
+        charge=-1.602e-19,
+        mass=9.109e-31,
+        v0x=1e7,
+        Ey=2000.0,
+        length=0.05,
+        dt=1e-11,
+    )
+    assert res["is_verified"]
+    assert res["relative_error_percent"] < 0.5
+

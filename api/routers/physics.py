@@ -241,3 +241,207 @@ def calculate_trajectory(
         computeTimeMs=compute_time_ms,
     )
 
+
+# ═══════════════════════════════════════════════════════════════════
+# CAPÍTULO 5: THOMSON
+# ═══════════════════════════════════════════════════════════════════
+from domain.dynamics import verify_thomson_experiment
+from api.schemas.physics import ThomsonVerificationQuery
+
+@router.post("/ch5/thomson", response_model=PhysicsResponse)
+def verify_thomson(query: ThomsonVerificationQuery):
+    t0 = time.perf_counter()
+    res = verify_thomson_experiment(
+        charge=query.charge,
+        mass=query.mass,
+        v0x=query.v0x,
+        Ey=query.Ey,
+        length=query.length,
+        dt=query.dt,
+    )
+    return PhysicsResponse(
+        type="ch5_thomson_result",
+        thomsonResult=res,
+        computeTimeMs=(time.perf_counter() - t0) * 1000.0,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# CAPÍTULO 6: LORENTZ Y CICLOTRÓN
+# ═══════════════════════════════════════════════════════════════════
+from domain.magnetic import (
+    simulate_lorentz_trajectory_2d,
+    verify_cyclotron_physics,
+    verify_wien_filter,
+)
+from api.schemas.physics import (
+    LorentzQuery,
+    LorentzSnapshotSchema,
+    CyclotronVerificationQuery,
+    WienFilterQuery,
+    Vector2DSchema,
+)
+
+@router.post("/ch6/lorentz", response_model=PhysicsResponse)
+def calculate_lorentz(query: LorentzQuery):
+    t0 = time.perf_counter()
+    p0 = Vector2D(query.initialPos.x, query.initialPos.y)
+    v0 = Vector2D(query.initialVel.x, query.initialVel.y)
+    e_vec = Vector2D(query.E.x, query.E.y)
+
+    snaps = simulate_lorentz_trajectory_2d(
+        charge=query.charge,
+        mass=query.mass,
+        initial_pos=p0,
+        initial_vel=v0,
+        E=e_vec,
+        Bz=query.Bz,
+        total_time=query.totalTime,
+        dt=query.dt,
+    )
+
+    schema_snaps = [
+        LorentzSnapshotSchema(
+            time=s.time,
+            position=Vector2DSchema(x=s.position.x, y=s.position.y),
+            velocity=Vector2DSchema(x=s.velocity.x, y=s.velocity.y),
+            acceleration=Vector2DSchema(x=s.acceleration.x, y=s.acceleration.y),
+            speed=s.speed,
+            kineticEnergy=s.kinetic_energy,
+            workDone=s.work_done,
+        )
+        for s in snaps
+    ]
+
+    return PhysicsResponse(
+        type="ch6_magnetic_result",
+        lorentzTrajectory=schema_snaps,
+        computeTimeMs=(time.perf_counter() - t0) * 1000.0,
+    )
+
+@router.post("/ch6/cyclotron-verify", response_model=PhysicsResponse)
+def verify_cyclotron(query: CyclotronVerificationQuery):
+    t0 = time.perf_counter()
+    res = verify_cyclotron_physics(query.mass, query.charge, query.speed, query.Bz, query.dt)
+    return PhysicsResponse(
+        type="ch6_cyclotron_result",
+        cyclotronResult=res,
+        computeTimeMs=(time.perf_counter() - t0) * 1000.0,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# CAPÍTULO 7: ONDA ELECTROMAGNÉTICA EN VACÍO
+# ═══════════════════════════════════════════════════════════════════
+from domain.em_wave import (
+    PlaneWave2D,
+    evaluate_wave_grid_2d,
+    verify_vacuum_wave_speed,
+    verify_orthogonality_and_equipartition,
+    verify_poynting_impedance,
+)
+from api.schemas.physics import EMWaveGridQuery, EMWaveSnapshotSchema, EMWaveVerificationQuery
+
+@router.post("/ch7/em-wave", response_model=PhysicsResponse)
+def calculate_em_wave(query: EMWaveGridQuery):
+    t0 = time.perf_counter()
+    wave = PlaneWave2D(
+        amplitude_E0=query.amplitudeE0,
+        frequency=query.frequency,
+        propagation_angle_rad=query.propagationAngleRad,
+    )
+    grid_points = evaluate_wave_grid_2d(wave, query.xRange, query.yRange, query.time, query.resolution)
+    schema_grid = [
+        EMWaveSnapshotSchema(
+            point=Vector2DSchema(x=gp.point.x, y=gp.point.y),
+            Ez=gp.Ez,
+            B=Vector2DSchema(x=gp.B.x, y=gp.B.y),
+            BMagnitude=gp.B_magnitude,
+            poynting=Vector2DSchema(x=gp.poynting.x, y=gp.poynting.y),
+            poyntingMagnitude=gp.poynting_magnitude,
+            energyDensityE=gp.energy_density_E,
+            energyDensityB=gp.energy_density_B,
+            totalEnergyDensity=gp.total_energy_density,
+        )
+        for gp in grid_points
+    ]
+    return PhysicsResponse(
+        type="ch7_em_wave_result",
+        emWaveGrid=schema_grid,
+        computeTimeMs=(time.perf_counter() - t0) * 1000.0,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# CAPÍTULO 8: METAMATERIALES
+# ═══════════════════════════════════════════════════════════════════
+from domain.metamaterials import (
+    MetamaterialUnitCell,
+    compute_spectral_response,
+    verify_energy_conservation_spectrum,
+    verify_veselago_negative_refraction,
+    verify_bragg_bandgap,
+)
+from api.schemas.physics import MetamaterialsQuery, SpectralPointSchema
+
+@router.post("/ch8/metamaterials", response_model=PhysicsResponse)
+def calculate_metamaterials(query: MetamaterialsQuery):
+    t0 = time.perf_counter()
+    cell = MetamaterialUnitCell(
+        a=query.cell.a,
+        d=query.cell.d,
+        w=query.cell.w,
+        periods=query.cell.periods,
+        loss_factor=query.cell.lossFactor,
+    )
+    pts = compute_spectral_response(cell, query.freqMinGhz, query.freqMaxGhz, query.points)
+    schema_spec = [
+        SpectralPointSchema(
+            frequencyGhz=sp.frequency_ghz,
+            transmission=sp.transmission,
+            reflection=sp.reflection,
+            absorption=sp.absorption,
+            transmissionDb=sp.transmission_db,
+            epsReal=sp.eps_real,
+            epsImag=sp.eps_imag,
+            muReal=sp.mu_real,
+            muImag=sp.mu_imag,
+            nReal=sp.n_real,
+            nImag=sp.n_imag,
+            isLeftHanded=sp.is_left_handed,
+        )
+        for sp in pts
+    ]
+    return PhysicsResponse(
+        type="ch8_metamaterials_result",
+        spectrum=schema_spec,
+        computeTimeMs=(time.perf_counter() - t0) * 1000.0,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# CAPÍTULO 9: FDTD
+# ═══════════════════════════════════════════════════════════════════
+from domain.fdtd2d import verify_cfl_stability_condition, verify_fdtd_pulse_velocity
+
+@router.get("/ch9/fdtd-verify", response_model=PhysicsResponse)
+def verify_fdtd():
+    t0 = time.perf_counter()
+    cfl_res = verify_cfl_stability_condition(0.5)
+    cfl_unstable = verify_cfl_stability_condition(1.05)
+    pulse_res = verify_fdtd_pulse_velocity(Nx=60, Ny=30, dx=0.003)
+
+    combined_fdtd = {
+        "cfl_stable_test": cfl_res,
+        "cfl_unstable_test": cfl_unstable,
+        "pulse_speed_test": pulse_res,
+        "is_all_verified": cfl_res["theoretically_stable"] and pulse_res["is_verified"],
+    }
+
+    return PhysicsResponse(
+        type="ch9_fdtd_verify_result",
+        fdtdVerifyResult=combined_fdtd,
+        computeTimeMs=(time.perf_counter() - t0) * 1000.0,
+    )
+
+

@@ -1,10 +1,10 @@
-# Simulación numérica y optimización computacional de estructuras periódicas (metamateriales teóricos) para el control de ondas electromagnéticas
+# Simulación numérica y optimización computacional de estructuras periódicas para el control de ondas electromagnéticas
 
 *Modelado bidimensional mediante diferencias finitas en el dominio del tiempo (FDTD) y algoritmos genéticos*
 
 ---
 
-## I. Planteamiento del Proyecto (1a Revisión Actualizada)
+## I. Planteamiento del Proyecto
 
 ### 1. Resumen
 
@@ -40,7 +40,7 @@ empleando el método de diferencias finitas en el dominio del tiempo (FDTD) dent
 
 ---
 
-## II. Desarrollo del Proyecto (2a Revisión)
+## II. Desarrollo del Proyecto
 
 ### 1. Marco teórico
 

@@ -317,3 +317,92 @@ def compute_current_density(
 def compute_current(current_density: float, cross_sectional_area: float) -> float:
     """Intensidad de corriente total I = J * A [A] (Amperios)."""
     return current_density * cross_sectional_area
+
+
+# ═══════════════════════════════════════════════════════════════════
+# GUIONES DE COMPROBACIÓN FÍSICA ANALÍTICA (CAPÍTULO 5)
+# ═══════════════════════════════════════════════════════════════════
+
+def theoretical_thomson_deflection(
+    charge: float,
+    mass: float,
+    v0x: float,
+    Ey: float,
+    length: float,
+) -> dict[str, float]:
+    """Cálculo analítico exacto de la deflexión balística de J.J. Thomson.
+
+    Una partícula cargada con velocidad horizontal v0x atraviesa placas de longitud L
+    con campo eléctrico vertical constante Ey:
+        ay = (q * Ey) / m
+        t_vuelo = L / v0x
+        y(L) = 0.5 * ay * t_vuelo² = (q * Ey * L²) / (2 * m * v0x²)
+        vy(L) = ay * t_vuelo = (q * Ey * L) / (m * v0x)
+        tan(θ) = vy / vx = (q * Ey * L) / (m * v0x²)
+    """
+    if v0x <= 0 or mass <= 0 or length <= 0:
+        raise ValueError("v0x, masa y longitud deben ser estrictamente positivos.")
+
+    ay = (charge * Ey) / mass
+    time_of_flight = length / v0x
+    y_deflection = 0.5 * ay * (time_of_flight**2)
+    vy_exit = ay * time_of_flight
+    deflection_angle_rad = math.atan2(vy_exit, v0x)
+    deflection_angle_deg = math.degrees(deflection_angle_rad)
+
+    return {
+        "acceleration_y": ay,
+        "time_of_flight": time_of_flight,
+        "y_deflection": y_deflection,
+        "vy_exit": vy_exit,
+        "deflection_angle_rad": deflection_angle_rad,
+        "deflection_angle_deg": deflection_angle_deg,
+    }
+
+
+def verify_thomson_experiment(
+    charge: float,
+    mass: float,
+    v0x: float,
+    Ey: float,
+    length: float,
+    dt: float = 0.0001,
+) -> dict:
+    """Guión comprobable que compara la simulación numérica (Velocity-Verlet) contra la fórmula analítica."""
+    theoretical = theoretical_thomson_deflection(charge, mass, v0x, Ey, length)
+
+    p0 = Particle(position=Vector2D(0.0, 0.0), charge=charge, label="electrón_prueba")
+    dyn_p = DynamicParticle(particle=p0, mass=mass, velocity=Vector2D(v0x, 0.0))
+    plates = UniformElectricField(
+        field_vector=Vector2D(0.0, Ey),
+        x_bounds=(0.0, length),
+        y_bounds=(-float("inf"), float("inf")),
+    )
+
+    total_time = (length / v0x) * 1.05
+    snapshots = simulate_trajectory(
+        dynamic_particle=dyn_p,
+        sources=[],
+        uniform_fields=[plates],
+        total_time=total_time,
+        dt=dt,
+        max_steps=10000,
+    )
+
+    # Buscar el snapshot más cercano a x = length
+    exit_snap = min(snapshots, key=lambda s: abs(s.position.x - length))
+    num_y = exit_snap.position.y
+    theo_y = theoretical["y_deflection"]
+    abs_err = abs(num_y - theo_y)
+    rel_err = (abs_err / abs(theo_y)) * 100.0 if abs(theo_y) > 1e-12 else 0.0
+
+    return {
+        "theoretical": theoretical,
+        "numerical_y": num_y,
+        "numerical_vy": exit_snap.velocity.y,
+        "numerical_time": exit_snap.time,
+        "absolute_error_m": abs_err,
+        "relative_error_percent": rel_err,
+        "is_verified": rel_err < 0.5,  # Tolerancia estricta del 0.5%
+    }
+
