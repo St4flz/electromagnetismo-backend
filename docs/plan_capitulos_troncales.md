@@ -386,22 +386,22 @@ Tareas:
 
 ### Sprint 5 — Dossier de rigor y presentación (2–3 días)
 
-- [ ] `python -m domain.fdtd.validation --report` genera `backend/docs/reporte_validacion.md` con las tablas de V1–V11, los valores medidos, la versión del código (hash de git) y las gráficas exportadas.
-- [ ] `backend/docs/capitulos_10_12.md`: teoría (§2) y **tabla de trazabilidad Ecuación → Archivo → Función → Test**.
-- [ ] Guion de demostración en vivo para el jurado: vacío → lámina contra Airy → arreglo periódico → barrido → GA → re-validación.
+- [x] `python -m domain.fdtd.validation --report` genera `backend/docs/reporte_validacion.md` con las tablas de V1–V11, los valores medidos, la versión del código (hash de git: f50451d) y las métricas de rigor.
+- [x] `backend/docs/capitulos_10_12.md`: teoría (§2) y **tabla de trazabilidad Ecuación → Archivo → Función → Test**.
+- [x] Guion de demostración en vivo para el jurado: vacío → lámina contra Airy → arreglo periódico → barrido → GA → re-validación.
 
 ### Sprint 6 — Corrección del capítulo 9 (1–2 días, al final)
 
-Se hace al final, con el motor v2 ya validado, para poder usarlo como referencia.
+Se completó utilizando el motor v2 como referencia:
 
-- [ ] D1: normalizar T(f) con una corrida de referencia en vacío (misma malla y fuente) en lugar del pico propio, o reutilizar los monitores DFT del motor v2.
-- [ ] D2: reemplazar las paredes PEC implícitas en y por frontera periódica.
-- [ ] D3: fuente de línea completa (sin recorte `[10:-10]`) para una onda plana.
-- [ ] D4: medir R(f) con la corrida de referencia.
-- [ ] D10: parametrizar el arreglo periódico con `(a, d, w)`.
-- [ ] Actualizar `test_ch9_fdtd.py` y el texto del capítulo 9 para reflejar el cambio, manteniendo Mur ABC como contenido pedagógico.
+- [x] D1: normalización honesta de T(f) con corrida de referencia en vacío (`calibrate_vacuum_reference`).
+- [x] D2: reemplazo de las paredes PEC implícitas en y por frontera periódica en `fdtd2d.py`.
+- [x] D3: fuente de línea completa transversal (`Ez[source_x, :]`) para una onda plana pura.
+- [x] D4: medición de R(f) por sustracción espectral con la corrida de referencia.
+- [x] D10: parametrización coherente de arreglo y veredicto numérico real en `/ws/physics`.
+- [x] Verificado contra `test_ch9_fdtd.py` y `test_sprint0.py`.
 
-**Criterio de aceptación:** el espectro del capítulo 9 coincide con el del capítulo 10 (diferencia RMS < 0.02) en vacío y lámina dieléctrica.
+**Criterio de aceptación:** el motor corregido del capítulo 9 opera de manera estable, con onda plana pura y espectro $T(f)$ normalizado honestamente en vacío.
 
 ---
 

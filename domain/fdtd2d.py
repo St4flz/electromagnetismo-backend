@@ -59,7 +59,7 @@ class FDTD2DSimulator:
     ez_left_prev: np.ndarray = field(init=False)
     ez_right_prev: np.ndarray = field(init=False)
 
-    # Monitores de registro temporal
+    # Monitores de registro temporal y calibración de referencia
     time_step: int = 0
     current_time: float = 0.0
     dt: float = field(init=False)
@@ -67,6 +67,9 @@ class FDTD2DSimulator:
     refl_probe_x: int = field(init=False)
     time_history_trans: list[float] = field(default_factory=list)
     time_history_refl: list[float] = field(default_factory=list)
+    reference_incident_fft: np.ndarray | None = None
+    reference_refl_fft: np.ndarray | None = None
+    reference_freqs: np.ndarray | None = None
 
     def __post_init__(self):
         # Paso temporal condicionado por CFL
@@ -139,6 +142,34 @@ class FDTD2DSimulator:
         self.time_history_trans.clear()
         self.time_history_refl.clear()
 
+    def calibrate_vacuum_reference(self, num_steps: int = 350):
+        """D1 & D4: Ejecuta una corrida de calibración en vacío para normalizar T(f) y R(f)."""
+        backup_eps = self.eps_r.copy()
+        backup_sigma = self.sigma.copy()
+
+        # Configurar vacío
+        self.eps_r.fill(1.0)
+        self.sigma.fill(0.0)
+        self._recompute_coefficients()
+        self.reset_fields()
+
+        self.step(num_steps)
+
+        # Guardar espectro incidente de referencia en transmisión y reflexión
+        sig_t = np.array(self.time_history_trans, dtype=np.float64)
+        sig_r = np.array(self.time_history_refl, dtype=np.float64)
+        n = len(sig_t)
+
+        self.reference_incident_fft = np.abs(np.fft.rfft(sig_t))
+        self.reference_refl_fft = np.fft.rfft(sig_r)
+        self.reference_freqs = np.fft.rfftfreq(n, d=self.dt) * 1e-9
+
+        # Restaurar medio
+        self.eps_r = backup_eps
+        self.sigma = backup_sigma
+        self._recompute_coefficients()
+        self.reset_fields()
+
     def _source_value(self) -> float:
         """Calcula el valor instantáneo de la fuente de excitación."""
         t = self.current_time
@@ -162,6 +193,8 @@ class FDTD2DSimulator:
             # 1. Actualización de campo magnético Hx en salto de rana (t + dt/2)
             # Hx[i, j] = Hx[i, j] - Db * (Ez[i, j+1] - Ez[i, j])
             self.Hx[:, :-1] -= self.Db * (self.Ez[:, 1:] - self.Ez[:, :-1])
+            # D2: Cierre periódico en y
+            self.Hx[:, -1] -= self.Db * (self.Ez[:, 0] - self.Ez[:, -1])
 
             # 2. Actualización de campo magnético Hy en salto de rana (t + dt/2)
             # Hy[i, j] = Hy[i, j] + Db * (Ez[i+1, j] - Ez[i, j])
@@ -171,20 +204,22 @@ class FDTD2DSimulator:
             ez_x1_old = self.Ez[1, :].copy()
             ez_xend1_old = self.Ez[self.Nx - 2, :].copy()
 
-            # 3. Actualización de campo eléctrico Ez en salto de rana (t + dt)
+            # 3. Actualización de campo eléctrico Ez con frontera periódica en y (t + dt)
             # Ez[i, j] = Ca * Ez + Cb * [(Hy[i, j] - Hy[i-1, j]) - (Hx[i, j] - Hx[i, j-1])]
-            curl_h = (
-                (self.Hy[1:-1, 1:-1] - self.Hy[:-2, 1:-1])
-                - (self.Hx[1:-1, 1:-1] - self.Hx[1:-1, :-2])
-            )
-            self.Ez[1:-1, 1:-1] = (
-                self.Ca[1:-1, 1:-1] * self.Ez[1:-1, 1:-1]
-                + self.Cb[1:-1, 1:-1] * curl_h
+            d_hy = self.Hy[1:-1, :] - self.Hy[:-2, :]
+            d_hx = np.empty_like(d_hy)
+            d_hx[:, 1:] = self.Hx[1:-1, 1:] - self.Hx[1:-1, :-1]
+            d_hx[:, 0] = self.Hx[1:-1, 0] - self.Hx[1:-1, -1]  # D2: periódica en y
+            curl_h = d_hy - d_hx
+
+            self.Ez[1:-1, :] = (
+                self.Ca[1:-1, :] * self.Ez[1:-1, :]
+                + self.Cb[1:-1, :] * curl_h
             )
 
-            # 4. Inyección de la fuente (línea suave transversal)
+            # 4. Inyección de la fuente (D3: línea completa transversal para onda plana pura)
             val = self._source_value()
-            self.Ez[self.source_x, 10:-10] += val
+            self.Ez[self.source_x, :] += val
 
             # 5. Fronteras absorbentes Mur ABC de 1er orden en x=0 y x=Nx-1
             # Ez_0^{n+1} = Ez_1^n + mur_coeff * (Ez_1^{n+1} - Ez_0^n)
@@ -209,26 +244,49 @@ class FDTD2DSimulator:
         return [[round(float(val), 4) for val in row] for row in sub]
 
     def compute_transmission_spectrum(self, max_freq_ghz: float = 20.0) -> list[dict]:
-        """Calcula el espectro T(f) mediante FFT de la señal registrada en el monitor."""
+        """Calcula el espectro T(f) y R(f) normalizado honestamente mediante FFT."""
         if len(self.time_history_trans) < 32:
             return []
 
-        signal = np.array(self.time_history_trans, dtype=np.float64)
-        n = len(signal)
-        fft_vals = np.abs(np.fft.rfft(signal))
+        signal_t = np.array(self.time_history_trans, dtype=np.float64)
+        signal_r = np.array(self.time_history_refl, dtype=np.float64)
+        n = len(signal_t)
+
+        fft_t = np.abs(np.fft.rfft(signal_t))
+        fft_r_raw = np.fft.rfft(signal_r)
         freqs = np.fft.rfftfreq(n, d=self.dt) * 1e-9  # GHz
 
-        # Normalizar espectro al pico máximo
-        peak = np.max(fft_vals) if np.max(fft_vals) > 0 else 1.0
-        normalized_fft = fft_vals / peak
+        # D1 & D4: Normalizar con la corrida de referencia en vacío si está disponible
+        if (
+            self.reference_incident_fft is not None
+            and len(self.reference_incident_fft) == len(fft_t)
+        ):
+            inc_fft = np.maximum(self.reference_incident_fft, 1e-6)
+            # Transmisión T(f) = |E_trans|^2 / |E_inc|^2
+            t_power = np.clip((fft_t / inc_fft) ** 2, 0.0, 2.0)
+
+            # Reflexión R(f) restando la onda incidente en la sonda de reflexión
+            if self.reference_refl_fft is not None and len(self.reference_refl_fft) == len(fft_r_raw):
+                refl_scattered = np.abs(fft_r_raw - self.reference_refl_fft)
+                r_power = np.clip((refl_scattered / inc_fft) ** 2, 0.0, 2.0)
+            else:
+                r_power = np.clip((np.abs(fft_r_raw) / inc_fft) ** 2, 0.0, 2.0)
+        else:
+            # Fallback a normalización propia
+            peak = np.max(fft_t) if np.max(fft_t) > 0 else 1.0
+            t_power = (fft_t / peak) ** 2
+            r_power = np.zeros_like(t_power)
 
         spectrum: list[dict] = []
-        for f, mag in zip(freqs, normalized_fft):
+        for i, f in enumerate(freqs):
             if 1.0 <= f <= max_freq_ghz:
+                t_val = float(t_power[i])
+                r_val = float(r_power[i])
                 spectrum.append({
                     "frequencyGhz": round(float(f), 2),
-                    "transmissionMagnitude": round(float(mag), 4),
-                    "powerTransmission": round(float(mag**2), 4),
+                    "transmissionMagnitude": round(float(math.sqrt(t_val)), 4),
+                    "powerTransmission": round(t_val, 4),
+                    "powerReflection": round(r_val, 4),
                 })
 
         return spectrum
@@ -255,12 +313,12 @@ def verify_cfl_stability_condition(courant_factor: float) -> dict:
     is_unstable = False
     max_field = 0.0
 
-    for _ in range(60):
+    for _ in range(100):
         sim.step(1)
         current_max = float(np.max(np.abs(sim.Ez)))
         if current_max > max_field:
             max_field = current_max
-        if math.isnan(current_max) or math.isinf(current_max) or current_max > 1e4:
+        if math.isnan(current_max) or math.isinf(current_max) or current_max > 50.0:
             is_unstable = True
             break
 
