@@ -15,7 +15,7 @@ class CellFamily(str, Enum):
     SQUARE_RING = "square_ring"   # Familia C: Anillo cuadrado concéntrico (README Fase 4)
 
 
-@dataclass(frozen=True)
+@dataclass
 class UnitCellGeometry:
     """Parámetros geométricos de la celda unitaria del metamaterial en milímetros [mm]."""
 
@@ -31,18 +31,20 @@ class UnitCellGeometry:
     def validate(self) -> None:
         """Verifica restricciones físicas y geométricas con auto-reparación no destructiva."""
         if self.a_mm <= 0:
-            self.a_mm = 10.0
+            object.__setattr__(self, "a_mm", 10.0)
         if self.w_mm < 0:
-            self.w_mm = 0.0
+            object.__setattr__(self, "w_mm", 0.0)
         # Permitir w == a para lámina continua homogénea (Slab Airy)
         if self.w_mm > self.a_mm:
-            self.w_mm = self.a_mm
+            object.__setattr__(self, "w_mm", self.a_mm)
         if self.family == CellFamily.SQUARE_RING and self.w_mm > 0:
             # Garantizar hueco interior para el anillo concéntrico
             if (self.a_mm - self.d_mm) <= 2.0 * self.w_mm:
-                self.d_mm = max(0.0, self.a_mm - 2.0 * self.w_mm - 0.5)
+                new_d = max(0.0, self.a_mm - 2.0 * self.w_mm - 0.5)
+                object.__setattr__(self, "d_mm", new_d)
                 if (self.a_mm - self.d_mm) <= 2.0 * self.w_mm:
-                    self.w_mm = max(0.25, (self.a_mm - self.d_mm - 0.5) / 2.0)
+                    new_w = max(0.25, (self.a_mm - self.d_mm - 0.5) / 2.0)
+                    object.__setattr__(self, "w_mm", new_w)
 
 
 def rasterize_unit_cell(
