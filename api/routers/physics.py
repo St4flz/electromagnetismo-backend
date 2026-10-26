@@ -435,7 +435,12 @@ def verify_fdtd():
         "cfl_stable_test": cfl_res,
         "cfl_unstable_test": cfl_unstable,
         "pulse_speed_test": pulse_res,
-        "is_all_verified": cfl_res["theoretically_stable"] and pulse_res["is_verified"],
+        "is_all_verified": (
+            cfl_res["numerically_stable"]
+            and cfl_res["theorem_verified"]
+            and cfl_unstable["theorem_verified"]
+            and pulse_res["is_verified"]
+        ),
     }
 
     return PhysicsResponse(

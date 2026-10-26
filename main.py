@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers.physics import router as physics_router
+from api.routers.source import router as source_router
 from api.websockets.realtime_physics import ws_router
 
 app = FastAPI(
@@ -29,6 +30,7 @@ app.add_middleware(
 
 # Routers REST y WebSocket
 app.include_router(physics_router, prefix="/api")
+app.include_router(source_router, prefix="/api")
 app.include_router(ws_router)
 
 

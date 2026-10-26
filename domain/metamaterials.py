@@ -181,16 +181,13 @@ def compute_spectral_response(
         t_coeff = 2.0 / denom
         r_coeff = (-1j * (z_wave - 1.0 / z_wave) * sin_delta) / denom
 
-        trans = min(max(abs(t_coeff)**2, 0.0), 1.0)
-        refl = min(max(abs(r_coeff)**2, 0.0), 1.0)
-
-        total_rt = trans + refl
-        if total_rt > 1.0:
-            trans = trans / total_rt
-            refl = refl / total_rt
-            absorp = 0.0
-        else:
-            absorp = max(1.0 - trans - refl, 0.0)
+        # T y R se calculan de forma independiente a partir de |t|² y |r|².
+        # NO se recortan ni se renormalizan: la absorción A = 1 - T - R es el
+        # balance de potencia y debe cumplir A ≥ 0 en un medio pasivo. Si algún día
+        # A < 0, es una violación real que verify_energy_conservation_spectrum reporta.
+        trans = abs(t_coeff) ** 2
+        refl = abs(r_coeff) ** 2
+        absorp = 1.0 - trans - refl
 
         # dB
         t_db = 10.0 * math.log10(max(trans, 1e-12))
@@ -247,20 +244,26 @@ def evaluate_objective_function(
 # ═══════════════════════════════════════════════════════════════════
 
 def verify_energy_conservation_spectrum(cell: MetamaterialUnitCell) -> dict:
-    """Guión comprobable 1: Comprueba que R(f) + T(f) + A(f) == 1.00000 en todo el espectro."""
-    spectrum = compute_spectral_response(cell, freq_min_ghz=5.0, freq_max_ghz=15.0, points=50)
+    """Guión comprobable 1: balance de potencia del modelo de medio efectivo.
 
-    max_energy_deviation = 0.0
-    for pt in spectrum:
-        total = pt.transmission + pt.reflection + pt.absorption
-        dev = abs(total - 1.0)
-        if dev > max_energy_deviation:
-            max_energy_deviation = dev
+    Dos pruebas independientes (ninguna fuerza el resultado):
+      (a) Límite sin pérdidas (γ = 0): R(f) + T(f) = 1 → se mide max |R + T − 1|.
+      (b) Medio con pérdidas: pasividad A(f) = 1 − R − T ≥ 0 → se mide min A(f).
+    """
+    lossless = MetamaterialUnitCell(
+        a=cell.a, d=cell.d, w=cell.w, periods=cell.periods, loss_factor=0.0
+    )
+    spec_lossless = compute_spectral_response(lossless, 5.0, 15.0, points=50)
+    max_dev = max(abs(p.transmission + p.reflection - 1.0) for p in spec_lossless)
+
+    spec_lossy = compute_spectral_response(cell, 5.0, 15.0, points=50)
+    min_abs = min(p.absorption for p in spec_lossy)
 
     return {
-        "tested_points": len(spectrum),
-        "max_energy_deviation": max_energy_deviation,
-        "is_conserved": max_energy_deviation < 1e-5,
+        "tested_points": len(spec_lossy),
+        "max_energy_deviation": max_dev,  # lossless |R+T-1|
+        "min_absorption_lossy": min_abs,  # debe ser >= 0 (pasividad)
+        "is_conserved": max_dev < 1e-9 and min_abs > -1e-9,
     }
 
 
@@ -301,15 +304,46 @@ def verify_veselago_negative_refraction(
 
 
 def verify_bragg_bandgap(cell_size_mm: float = 10.0, host_eps_r: float = 2.2) -> dict:
-    """Guión comprobable 3: Verifica la condición de reflexión de Bragg periódica f_Bragg = c / (2 · a · √ε)."""
+    """Guión comprobable 3: la banda prohibida de un apilamiento periódico aparece en f_Bragg = c / (2·a·n_medio),
+    con n_medio = (n_host + n_vacío)/2 para capas de igual espesor a/2.
+
+    Se compara la fórmula con el mínimo de transmisión de un apilamiento 1D real
+    (matriz de transferencia exacta, 12 periodos, capas alternas ε_host y 1 de espesor a/2).
+    """
     a_m = cell_size_mm * 1e-3
-    theo_bragg_hz = SPEED_OF_LIGHT / (2.0 * a_m * math.sqrt(host_eps_r))
+    n_h, n_l = math.sqrt(host_eps_r), 1.0
+    # Frecuencia de Bragg efectiva del periodo: a·n_medio = λ/2 con n_medio = (n_h + n_l)/2
+    n_avg = 0.5 * (n_h + n_l)
+    theo_bragg_hz = SPEED_OF_LIGHT / (2.0 * a_m * n_avg)
     theo_bragg_ghz = theo_bragg_hz * 1e-9
+
+    def stack_transmission(f_hz: float, pairs: int = 12) -> float:
+        k0 = 2.0 * math.pi * f_hz / SPEED_OF_LIGHT
+        m = [[1 + 0j, 0j], [0j, 1 + 0j]]
+        for n_j in (n_h, n_l) * pairs:
+            delta = n_j * k0 * (a_m / 2.0)
+            c, s = math.cos(delta), math.sin(delta)
+            lay = [[c, -1j * s / n_j], [-1j * n_j * s, c]]
+            m = [
+                [m[0][0] * lay[0][0] + m[0][1] * lay[1][0], m[0][0] * lay[0][1] + m[0][1] * lay[1][1]],
+                [m[1][0] * lay[0][0] + m[1][1] * lay[1][0], m[1][0] * lay[0][1] + m[1][1] * lay[1][1]],
+            ]
+        t = 2.0 / (m[0][0] + m[0][1] + m[1][0] + m[1][1])
+        return abs(t) ** 2
+
+    freqs = [(0.5 + 1.5 * i / 600) * theo_bragg_hz for i in range(601)]
+    t_vals = [stack_transmission(f) for f in freqs]
+    f_min_hz = freqs[t_vals.index(min(t_vals))]
+    measured_ghz = f_min_hz * 1e-9
+    rel_err = abs(measured_ghz - theo_bragg_ghz) / theo_bragg_ghz * 100.0
 
     return {
         "cell_size_mm": cell_size_mm,
         "host_permittivity": host_eps_r,
         "theoretical_bragg_frequency_ghz": theo_bragg_ghz,
+        "measured_gap_center_ghz": measured_ghz,
+        "min_transmission": min(t_vals),
+        "relative_error_percent": rel_err,
         "wavelength_in_dielectric_mm": (cell_size_mm * 2.0),
-        "is_verified": theo_bragg_ghz > 0,
+        "is_verified": rel_err < 3.0 and min(t_vals) < 0.05,
     }
