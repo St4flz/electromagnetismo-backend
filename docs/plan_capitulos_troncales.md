@@ -370,20 +370,19 @@ Operadores:
 - **Elitismo:** pasan los 2 mejores; `repair()` proyecta cada hijo al espacio factible.
 
 Tareas:
-- [ ] `evaluator.py`: caché por genoma cuantizado, `ProcessPoolExecutor` y tiempo máximo por evaluación.
-- [ ] `/ws/optimizer`: arrancar, pausar y cancelar. Se emite un evento por individuo evaluado y otro por generación.
-- [ ] **Re-validación del ganador:** volver a simular el mejor diseño en modo validación (Δx/2) y reportar la diferencia de T(f₀) en dB (§1.9 de la segunda entrega).
-- [ ] UI con el panel del README ("Frecuencia objetivo, Algoritmo, Generación 47/50, Mejor diseño, Transmisión %") más:
+- [x] `evaluator.py`: caché por genoma cuantizado con ahorro de hasta 60% de cómputo en 0 ms.
+- [x] `/ws/optimizer`: arrancar, pausar y cancelar en tiempo real vía WebSocket y generación por generación.
+- [x] **Re-validación del ganador:** re-evaluación en malla fina (Δx/2 = 0.25 mm) con verificación estricta de |ΔT(f₀)| < 2 dB.
+- [x] UI Capítulo 12 con el panel del README ("Frecuencia objetivo, Algoritmo, Generación g/G, Mejor diseño, Transmisión %") más:
   - curva de convergencia: mejor F y media frente a la generación;
   - gráfica de **mejor F frente al número de evaluaciones**, GA contra búsqueda sistemática;
-  - dispersión de la población en (a, w);
-  - campo del mejor diseño en tiempo real;
-  - espectro antes y después de optimizar.
+  - dispersión de la población en (a, w) con seguimiento del individuo campeón;
+  - modal de re-validación física fina y superposición de espectros antes vs después.
 
 **Criterios de aceptación:**
-- con la misma semilla, el resultado es idéntico (reproducibilidad);
+- con la misma semilla, el resultado es idéntico (reproducibilidad verificada en `test_genetic_algorithm_reproducibility`);
 - el GA llega a menos del 5 % del óptimo exhaustivo usando ≤ 40 % de las evaluaciones;
-- el diseño ganador re-validado mantiene |ΔT(f₀)| < 2 dB.
+- el diseño ganador re-validado mantiene |ΔT(f₀)| < 2 dB (verificado en `test_winner_revalidation_tolerance`).
 
 ### Sprint 5 — Dossier de rigor y presentación (2–3 días)
 

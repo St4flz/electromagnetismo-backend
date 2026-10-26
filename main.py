@@ -13,8 +13,10 @@ from api.routers.physics import router as physics_router
 from api.routers.source import router as source_router
 from api.routers.fdtd import router as fdtd_router
 from api.routers.sweep import router as sweep_router
+from api.routers.optimizer import router as optimizer_router
 from api.websockets.realtime_physics import ws_router
 from api.websockets.fdtd_stream import router as fdtd_ws_router
+from api.websockets.optimizer_stream import router as optimizer_ws_router
 
 app = FastAPI(
     title="Electromagnetismo Backend API",
@@ -36,8 +38,10 @@ app.include_router(physics_router, prefix="/api")
 app.include_router(source_router, prefix="/api")
 app.include_router(fdtd_router, prefix="/api")
 app.include_router(sweep_router, prefix="/api")
+app.include_router(optimizer_router)
 app.include_router(ws_router)
 app.include_router(fdtd_ws_router)
+app.include_router(optimizer_ws_router)
 
 
 @app.get("/")
