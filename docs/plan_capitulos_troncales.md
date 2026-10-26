@@ -312,13 +312,13 @@ Diseño de la página: lienzo de campo en tiempo real a la izquierda; editor de 
 
 ### Sprint 3 — Capítulo 11: Laboratorio paramétrico y función objetivo (≈ 1 semana)
 
-- [ ] Barridos en segundo plano (ProcessPool) sobre un parámetro o un par de parámetros, con progreso en vivo.
-- [ ] Visualizaciones:
+- [x] Barridos en segundo plano (ProcessPool/asyncio.to_thread) sobre un parámetro o un par de parámetros, con progreso en vivo.
+- [x] Visualizaciones:
   - familia de curvas T(f) al variar `w`;
   - mapa de calor T(f, a) en dB;
   - tabla tipo README (Diseño, a, d, w, f, T) **generada por la simulación**.
-- [ ] Exportación del dataset a CSV/JSON con los metadatos de la simulación (Δx, S, pasos, versión del código y semilla).
-- [ ] `objective.py`: funciones objetivo seleccionables.
+- [x] Exportación del dataset a CSV/JSON con los metadatos de la simulación (Δx, S, pasos, versión del código y semilla).
+- [x] `objective.py`: funciones objetivo seleccionables.
 
 $$
 F_1(\mathbf p)=T(f_0;\mathbf p)\qquad
@@ -330,8 +330,8 @@ donde $\overline T_{\text{pasa}}$ es la transmisión media fuera de la banda de 
 > [!IMPORTANT]
 > **Trampa física:** con metal (PEC) en modo TM, minimizar solo T(f₀) tiene una **solución trivial**: cerrar los huecos y formar una pared metálica, con T ≈ 0 en todas las frecuencias. Para que optimizar tenga sentido, el objetivo debe exigir **selectividad**, es decir, un filtro rechaza-banda (F₂). Este es un buen punto para la presentación: el objetivo está bien planteado.
 
-- [ ] Prueba de robustez: evaluar F en Δx y Δx/2 para un conjunto de diseños; el **ranking de diseños** debe conservarse (correlación de Spearman > 0.9).
-- [ ] (Opcional, avanzado) **Recuperación de parámetros efectivos S → (n, z, ε_eff, μ_eff)** (Smith et al., 2002) a partir de S₂₁ y S₁₁ complejos del FDTD. Esto cierra el puente con el capítulo 8 usando datos medidos y no calibrados.
+- [x] Prueba de robustez: evaluar F en Δx y Δx/2 para un conjunto de diseños; el **ranking de diseños** debe conservarse (correlación de Spearman > 0.9). Verificado con $\rho \ge 0.90$.
+- [x] (Opcional, avanzado) **Recuperación de parámetros efectivos S → (n, z, ε_eff, μ_eff)** (Smith et al., 2002) a partir de S₂₁ y S₁₁ complejos del FDTD. Esto cierra el puente con el capítulo 8 usando datos medidos y no calibrados.
 
 ### Sprint 4 — Capítulo 12: Optimizador automático (≈ 1 semana)
 

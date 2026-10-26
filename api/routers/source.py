@@ -43,6 +43,12 @@ ALLOWED_SYMBOLS: dict[str, tuple[str, str]] = {
     "fdtd.yee_numerical_phase_velocity": ("domain.fdtd.analytic", "yee_numerical_phase_velocity"),
     "fdtd.wire_medium_plasma_frequency": ("domain.fdtd.analytic", "wire_medium_plasma_frequency"),
     "fdtd.rasterize_unit_cell": ("domain.fdtd.geometry", "rasterize_unit_cell"),
+    # Capítulo 11 — Laboratorio Paramétrico y Funciones Objetivo
+    "sweep.evaluate_f2_bandstop_filter": ("domain.objective", "evaluate_f2_bandstop_filter"),
+    "sweep.evaluate_f1_pure_transmission": ("domain.objective", "evaluate_f1_pure_transmission"),
+    "sweep.compute_spearman_rank_correlation": ("domain.objective", "compute_spearman_rank_correlation"),
+    "sweep.run_1d_sweep": ("domain.sweep", "run_1d_sweep"),
+    "sweep.evaluate_sweep_robustness": ("domain.sweep", "evaluate_sweep_robustness"),
 }
 
 
