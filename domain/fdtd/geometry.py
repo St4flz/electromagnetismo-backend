@@ -29,14 +29,20 @@ class UnitCellGeometry:
     conductivity: float = 0.0           # Pérdidas óhmicas [S/m]
 
     def validate(self) -> None:
-        """Verifica restricciones físicas y geométricas básicas."""
-        if self.a_mm <= 0 or self.w_mm <= 0:
-            raise ValueError("Las dimensiones a y w deben ser estrictamente positivas")
-        if self.w_mm >= self.a_mm:
-            raise ValueError(f"El ancho del elemento w={self.w_mm} no puede ser mayor o igual al periodo a={self.a_mm}")
-        if self.family == CellFamily.SQUARE_RING:
-            if (self.a_mm - self.d_mm) <= 2 * self.w_mm:
-                raise ValueError("En el anillo cuadrado se requiere que (a - d) > 2*w para tener hueco interior")
+        """Verifica restricciones físicas y geométricas con auto-reparación no destructiva."""
+        if self.a_mm <= 0:
+            self.a_mm = 10.0
+        if self.w_mm < 0:
+            self.w_mm = 0.0
+        # Permitir w == a para lámina continua homogénea (Slab Airy)
+        if self.w_mm > self.a_mm:
+            self.w_mm = self.a_mm
+        if self.family == CellFamily.SQUARE_RING and self.w_mm > 0:
+            # Garantizar hueco interior para el anillo concéntrico
+            if (self.a_mm - self.d_mm) <= 2.0 * self.w_mm:
+                self.d_mm = max(0.0, self.a_mm - 2.0 * self.w_mm - 0.5)
+                if (self.a_mm - self.d_mm) <= 2.0 * self.w_mm:
+                    self.w_mm = max(0.25, (self.a_mm - self.d_mm - 0.5) / 2.0)
 
 
 def rasterize_unit_cell(
@@ -55,9 +61,14 @@ def rasterize_unit_cell(
     # Cuantización de dimensiones continuas a celdas enteras de grilla
     cell_nx = max(1, int(round(geom.a_mm / dx_mm)))
     cell_ny = materials.Ny # Debe coincidir con el periodo transversal completo Ny * dy = a
+
+    if geom.w_mm <= 0:
+        # Vacío: sin inclusiones materiales
+        return x_start_idx, x_start_idx + cell_nx * geom.periods
+
     w_cells_x = max(1, int(round(geom.w_mm / dx_mm)))
     w_cells_y = max(1, int(round(geom.w_mm / dy_mm)))
-    d_cells_x = max(1, int(round(geom.d_mm / dx_mm)))
+    d_cells_x = max(0, int(round(geom.d_mm / dx_mm)))
 
     current_x = x_start_idx
 

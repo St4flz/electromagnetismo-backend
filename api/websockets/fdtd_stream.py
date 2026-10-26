@@ -50,12 +50,22 @@ def create_fdtd_producer(
     # 1. Calibración en vacío
     sim.calibrate_incident_wave(max_steps=1400)
 
-    # 2. Configurar estructura
+    # 2. Configurar estructura con reparación automática ante valores límite
     fam = CellFamily.ROD_ARRAY if geom_cfg.get("family") == "rod_array" else CellFamily.SQUARE_RING
+    a_mm = max(2.0, float(geom_cfg.get("a_mm", 10.0)))
+    d_mm = max(0.0, float(geom_cfg.get("d_mm", 3.0)))
+    w_mm = max(0.0, min(a_mm, float(geom_cfg.get("w_mm", 1.0))))
+
+    if fam == CellFamily.SQUARE_RING and w_mm > 0:
+        if (a_mm - d_mm) <= 2.0 * w_mm:
+            d_mm = max(0.5, a_mm - 2.0 * w_mm - 0.5)
+            if (a_mm - d_mm) <= 2.0 * w_mm:
+                w_mm = max(0.25, (a_mm - d_mm - 0.5) / 2.0)
+
     geom = UnitCellGeometry(
-        a_mm=float(geom_cfg.get("a_mm", 10.0)),
-        d_mm=float(geom_cfg.get("d_mm", 3.0)),
-        w_mm=float(geom_cfg.get("w_mm", 1.0)),
+        a_mm=a_mm,
+        d_mm=d_mm,
+        w_mm=w_mm,
         periods=periods,
         family=fam,
         relative_permittivity=float(geom_cfg.get("relative_permittivity", 9.8)),
@@ -119,7 +129,14 @@ async def websocket_fdtd_stream(websocket: WebSocket):
             if action == "start":
                 cfg = data.get("config", {})
                 steps_per_frame = int(data.get("steps_per_frame", 6))
-                sim, producer = create_fdtd_producer(cfg, steps_per_frame=steps_per_frame)
+                try:
+                    sim, producer = create_fdtd_producer(cfg, steps_per_frame=steps_per_frame)
+                except Exception as exc:
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "message": f"Error configurando FDTD: {exc}",
+                    }))
+                    continue
 
                 # Notificar inicialización completada con metadatos de malla
                 await websocket.send_text(json.dumps({

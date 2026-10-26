@@ -141,6 +141,46 @@ async def compute_spectrum(config: FDTDSimulationConfigSchema):
     return await asyncio.to_thread(_compute_spectrum_sync, config)
 
 
+@router.get("/spectrum", response_model=SpectrumResponseSchema)
+async def compute_spectrum_get(
+    a_mm: float = 10.0,
+    d_mm: float = 3.0,
+    w_mm: float = 1.0,
+    periods: int = 3,
+    family: str = "square_ring",
+    dx_mm: float = 0.5,
+    f0_ghz: float = 10.0,
+    is_pec: bool = True,
+    relative_permittivity: float = 1.0,
+    conductivity: float = 0.0,
+    courant_factor: float = 0.70,
+    pml_thickness: int = 16,
+    max_steps: int = 1400,
+    f_min_ghz: float = 5.0,
+    f_max_ghz: float = 15.0,
+):
+    """Permite calcular el espectro mediante llamada GET con query parameters."""
+    cfg = FDTDSimulationConfigSchema(
+        geometry=UnitCellParamsSchema(
+            a_mm=a_mm,
+            d_mm=d_mm,
+            w_mm=w_mm,
+            periods=periods,
+            family=family,
+            is_pec=is_pec,
+            relative_permittivity=relative_permittivity,
+            conductivity=conductivity,
+        ),
+        dx_mm=dx_mm,
+        courant_factor=courant_factor,
+        pml_thickness=pml_thickness,
+        max_steps=max_steps,
+        f_min_ghz=f_min_ghz,
+        f_max_ghz=f_max_ghz,
+    )
+    return await asyncio.to_thread(_compute_spectrum_sync, cfg)
+
+
 @router.get("/benchmarks/airy")
 def get_airy_benchmark(
     eps_r: float = 4.0,
