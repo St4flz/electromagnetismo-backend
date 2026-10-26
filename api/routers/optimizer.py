@@ -1,7 +1,6 @@
 """Router REST para el optimizador automático y re-validación (Capítulo 12)."""
 
-from __future__ import annotations
-
+import asyncio
 import time
 from fastapi import APIRouter, HTTPException
 
@@ -96,10 +95,11 @@ async def grid_search_endpoint(req: GridSearchRequest):
         relative_permittivity=req.relative_permittivity,
         dx_mm=req.dx_mm,
         f0_ghz=req.f0_ghz,
-        max_steps=1400,
+        max_steps=700,
     )
 
-    res = run_grid_search(
+    res = await asyncio.to_thread(
+        run_grid_search,
         evaluator=evaluator,
         space=space,
         max_evaluations=req.max_evaluations,
@@ -124,7 +124,8 @@ async def grid_search_endpoint(req: GridSearchRequest):
 async def revalidate_endpoint(req: RevalidationRequest):
     """Re-valida el diseño ganador en malla fina (Δx = 0.25 mm) y calcula la discrepancia espectral."""
     try:
-        report = revalidate_winner_design(
+        report = await asyncio.to_thread(
+            revalidate_winner_design,
             a_mm=req.a_mm,
             d_mm=req.d_mm,
             w_mm=req.w_mm,

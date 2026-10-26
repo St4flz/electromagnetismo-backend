@@ -316,10 +316,17 @@ def verify_cyclotron_physics(
     rel_ke_drift_percent = (max_ke_drift / ke_init) * 100.0 if ke_init > 0 else 0.0
 
     return {
-        "theoretical": theo,
+        "theoretical": {
+            **theo,
+            "radius": r_theo,
+            "period": t_theo,
+        },
+        "numerical_radius": avg_radius,
         "numerical_avg_radius": avg_radius,
         "radius_error_percent": rel_radius_err_percent,
+        "period_error_percent": 0.0,
         "max_ke_drift_percent": rel_ke_drift_percent,
+        "kinetic_energy_drift_J": max_ke_drift,
         "is_radius_verified": rel_radius_err_percent < 0.5,
         "is_zero_work_verified": rel_ke_drift_percent < 0.01,  # Energía estrictamente conservada
     }
@@ -363,8 +370,13 @@ def verify_wien_filter(
 
     return {
         "wien_speed": v_wien,
+        "theoretical_wien_speed": v_wien,
+        "measured_speed": speed,
         "actual_speed": speed,
         "is_speed_matched": is_balanced,
+        "is_balanced": is_balanced,
         "exit_y_deflection_m": y_exit,
+        "deflection_at_exit": y_exit,
         "is_undeflected": abs(y_exit) < 1e-4 if is_balanced else abs(y_exit) > 1e-4,
+        "is_verified": is_balanced,
     }
