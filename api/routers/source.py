@@ -31,6 +31,18 @@ ALLOWED_SYMBOLS: dict[str, tuple[str, str]] = {
     "fdtd2d.FDTD2DSimulator.compute_transmission_spectrum": ("domain.fdtd2d", "FDTD2DSimulator.compute_transmission_spectrum"),
     "fdtd2d.verify_cfl_stability_condition": ("domain.fdtd2d", "verify_cfl_stability_condition"),
     "fdtd2d.verify_fdtd_pulse_velocity": ("domain.fdtd2d", "verify_fdtd_pulse_velocity"),
+    # Capítulo 10 — Motor FDTD v2 (Rigor físico y validaciones V1 a V11)
+    "fdtd.FDTDSimulation.step": ("domain.fdtd.simulator", "FDTDSimulation.step"),
+    "fdtd.FDTDSimulation.calibrate_incident_wave": ("domain.fdtd.simulator", "FDTDSimulation.calibrate_incident_wave"),
+    "fdtd.CPMLBoundary.__post_init__": ("domain.fdtd.boundaries", "CPMLBoundary.__post_init__"),
+    "fdtd.TFSFSource.correct_2d_H": ("domain.fdtd.sources", "TFSFSource.correct_2d_H"),
+    "fdtd.TFSFSource.correct_2d_E": ("domain.fdtd.sources", "TFSFSource.correct_2d_E"),
+    "fdtd.PoyntingSpectrum.from_powers": ("domain.fdtd.monitors", "PoyntingSpectrum.from_powers"),
+    "fdtd.airy_dielectric_slab_transmission": ("domain.fdtd.analytic", "airy_dielectric_slab_transmission"),
+    "fdtd.tmm_multilayer_transmission": ("domain.fdtd.analytic", "tmm_multilayer_transmission"),
+    "fdtd.yee_numerical_phase_velocity": ("domain.fdtd.analytic", "yee_numerical_phase_velocity"),
+    "fdtd.wire_medium_plasma_frequency": ("domain.fdtd.analytic", "wire_medium_plasma_frequency"),
+    "fdtd.rasterize_unit_cell": ("domain.fdtd.geometry", "rasterize_unit_cell"),
 }
 
 
