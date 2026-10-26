@@ -272,14 +272,14 @@ def step(self) -> None:
 ```
 
 Tareas:
-- [ ] `grid.py`, `materials.py`: coeficientes `Ca` y `Cb` (§2.2) y máscara PEC.
-- [ ] `boundaries.py`: periódica en y, CPML en x (§2.5), y Mur para comparar.
-- [ ] `sources.py`: rejilla auxiliar 1D y correcciones TF/SF (§2.6).
-- [ ] `monitors.py`: DFT en línea en planos de reflexión (región SF) y transmisión, y flujo de Poynting con Hy promediado en espacio y tiempo para co-ubicarlo con Ez.
-- [ ] `simulator.py`: auto-terminación cuando $U=\tfrac12\sum(\varepsilon E_z^2+\mu_0|H|^2)\Delta^2 < 10^{-5}U_{\max}$, más un tope de pasos.
-- [ ] `analytic.py`: Airy, TMM multicapa, dispersión numérica y f_p de hilos.
-- [ ] `geometry.py`: familias de celda (§5) y cuantización a múltiplos de Δx.
-- [ ] **Benchmark de rendimiento:** medir segundos por simulación en "modo rápido" (Δx = 0.5 mm) y "modo validación" (Δx = 0.25 mm). Si una simulación en modo rápido tarda más de 5 s, se añade `numba` (`@njit(parallel=True)`) al bucle de actualización; si no, se mantiene NumPy (ver §8).
+- [x] `grid.py`, `materials.py`: coeficientes `Ca` y `Cb` (§2.2) y máscara PEC.
+- [x] `boundaries.py`: periódica en y, CPML en x (§2.5), y Mur para comparar.
+- [x] `sources.py`: rejilla auxiliar 1D y correcciones TF/SF (§2.6).
+- [x] `monitors.py`: DFT en línea en planos de reflexión (región SF) y transmisión, y flujo de Poynting con Hy promediado en espacio y tiempo para co-ubicarlo con Ez.
+- [x] `simulator.py`: auto-terminación cuando $U=\tfrac12\sum(\varepsilon E_z^2+\mu_0|H|^2)\Delta^2 < 10^{-5}U_{\max}$, más un tope de pasos.
+- [x] `analytic.py`: Airy, TMM multicapa, dispersión numérica y f_p de hilos.
+- [x] `geometry.py`: familias de celda (§5) y cuantización a múltiplos de Δx.
+- [x] **Benchmark de rendimiento:** medir segundos por simulación en "modo rápido" (Δx = 0.5 mm) y "modo validación" (Δx = 0.25 mm). Modo rápido: 0.638 s (<< 5 s). Modo validación: 3.232 s (< 5 s). **Numba NO es necesario**, NumPy vectorizado contiguo en C cumple holgadamente.
 
 **Batería de validación** (`validation.py` + `test_ch10_fdtd_engine.py`):
 
@@ -301,12 +301,12 @@ Tareas:
 
 Diseño de la página: lienzo de campo en tiempo real a la izquierda; editor de celda y espectro a la derecha; abajo, pestañas **Teoría · Ecuación ↔ Código · Validación · Rendimiento**.
 
-- [ ] `FieldCanvas`: mapa divergente de Ez, contorno de la estructura y líneas de los planos TF/SF y de los monitores. Mosaico de la celda replicada en y para *ver* el arreglo infinito.
-- [ ] `StructureEditor`: a, d, w, familia y material, con presets que reproducen los casos 1–3 del README (vacío, lámina, arreglo periódico).
-- [ ] `SpectrumChart`: T, R, A y R+T con la curva analítica superpuesta en V5 y V6.
-- [ ] `ValidationPanel`: ejecuta V1–V11 contra el backend y muestra el valor medido, el teórico, el error y ✔ o ✘.
-- [ ] `CodeEquationPanel`: cada ecuación de §2 enlazada con la función real (vía `/api/source`). Ejemplo: "Ampère-Maxwell discreto ↔ `FDTDSimulation.step`, bloque 2".
-- [ ] `PerformanceHUD`: paso n, tiempo físico en ps, pasos/s, **Mceldas/s**, ms de cómputo por frame y energía total U(t). Al cambiar `w` en plena simulación, la UI responde en el siguiente frame.
+- [x] `FieldCanvas`: mapa divergente de Ez, contorno de la estructura y líneas de los planos TF/SF y de los monitores. Mosaico de la celda replicada en y para *ver* el arreglo infinito.
+- [x] `StructureEditor`: a, d, w, familia y material, con presets que reproducen los casos 1–3 del README (vacío, lámina, arreglo periódico).
+- [x] `SpectrumChart`: T, R, A y R+T con la curva analítica superpuesta en V5 y V6.
+- [x] `ValidationPanel`: ejecuta V1–V11 contra el backend y muestra el valor medido, el teórico, el error y ✔ o ✘.
+- [x] `CodeEquationPanel`: cada ecuación de §2 enlazada con la función real (vía `/api/source`). Ejemplo: "Ampère-Maxwell discreto ↔ `FDTDSimulation.step`, bloque 2".
+- [x] `PerformanceHUD`: paso n, tiempo físico en ps, pasos/s, **Mceldas/s**, ms de cómputo por frame y energía total U(t). Al cambiar `w` en plena simulación, la UI responde en el siguiente frame.
 
 **Criterio de aceptación:** ≥ 20 fps con una celda de 20×300; los tres casos del README se ven y se validan en la UI.
 
